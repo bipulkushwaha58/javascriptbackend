@@ -46,18 +46,18 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
-userSchema.pre("save", async function (next) {
+userSchema.pre("save", async function (next) {                 //pre hook of mongoose schema, here we can do something before saving data in db.
   if (!this.isModified("password")) return next();
 
   this.password = bcrypt.hash(this.password, 10);
   next();
 });
 
-userSchema.methods.isPasswordCorrect = async function (password) {
+userSchema.methods.isPasswordCorrect = async function (password) {        // here we are creating our own method which will be assigned with schema's methods 
   return await bcrypt.compare(password, this.password);
 };
 
-userSchema.methods.generateAccessToken = function () {
+userSchema.methods.generateAccessToken = function () {      //own method
   return jwt.sign(
     {
       _id: this._id,
