@@ -40,7 +40,7 @@ const userSchema = new Schema(
     },
     refreshToken: {
       type: String,
-      required: true,
+      // required: true,
     },
   },
   { timestamps: true }
@@ -49,7 +49,7 @@ const userSchema = new Schema(
 userSchema.pre("save", async function (next) {                 //pre hook of mongoose schema, here we can do something before saving data in db.
   if (!this.isModified("password")) return next();
 
-  this.password = bcrypt.hash(this.password, 10);
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
