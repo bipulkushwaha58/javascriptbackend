@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/FileUpload.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const options = {
   httpOnly: true,
@@ -362,13 +363,61 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
       },
     },
   ]);
-  console.log("channel: --->", channel)
-  if(!channel?.length){
-    throw new ApiError(404, "channel does not exists")
+  console.log("channel: --->", channel);
+  if (!channel?.length) {
+    throw new ApiError(404, "channel does not exists");
   }
   return res
-  .status(200)
-  .json(200,channel[0],"user channel fetched successsfully")
+    .status(200)
+    .json(200, channel[0], "user channel fetched successsfully");
+});
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+  const user = await User.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user._id), //here id is string but monodb id will have () also so erlier mongoose was doing all this conversion underhood but in aggregation we have to explicitly do this with mongoose.
+      },
+    },
+    {
+      $lookup: {
+        from: "videos", // now we are at user and we doing lookup from video
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users", // in this look up we ae at video and doing lookup from user ----> so local field will be from where we are!!
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    username: 1,
+                    avatar: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              owner: {
+                $first: "$owner",
+              },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  return res
+    .status(200)
+    .json(200, user[0].watchHistory, "watchHistory fetched successfully");
 });
 
 export {
@@ -382,7 +431,8 @@ export {
   updatedUser,
   updateUserAvatar,
   updateUserCoverImage,
-  getUserChannelProfile
+  getUserChannelProfile,
+  getWatchHistory,
 };
 
 // REGISTER STEPS BELOW:-->
