@@ -428,7 +428,6 @@ export {
   changeCurrentPassword,
   getCurrentUser,
   updateAccountDetails,
-  updatedUser,
   updateUserAvatar,
   updateUserCoverImage,
   getUserChannelProfile,
