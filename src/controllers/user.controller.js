@@ -49,11 +49,13 @@ const registerUser = asyncHandler(async (req, res) => {
   // const coverImageLocalPath = req.files?.coverImage[0]?.path;   // coverimnage will not come from UI then it will be undefine.
   const avatarLocalPath = req.files?.avatar[0]?.path;
 
+  console.log("avatarLocalPath: ", avatarLocalPath);
+
   let coverImageLocalPath;
 
   if (
     req.files &&
-    isArray(req.files.coverImage) &&
+    Array.isArray(req.files.coverImage) &&
     req.files.coverImage.length > 0
   ) {
     coverImageLocalPath = req.files?.coverImage[0]?.path;
@@ -95,18 +97,19 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { email, username, password } = req.body;
 
-  if (!username && !email) {
+  if (!(username || email)) {
     throw new ApiError(400, "username or password is required");
   }
 
   const user = await User.findOne({
-    $or: [{ username, email }],
+    $or: [{ username }, { email }],
   });
+
   if (!user) {
     throw new ApiError(404, "user does not exist");
   }
 
-  const isPasswordValid = await user.isPasswordCorrect(password); //we have added our own isPasswordCorrect method to userSchema so it will available in user which we are getting from db, not in User(this is mongoose User)
+  const isPasswordValid = await user.isPasswordCorrect(password); //we have added our own isPasswordCorrect method to userSchema so it will available in user, which we are getting from db, not in User(this is mongoose's User)
 
   if (!isPasswordValid) {
     throw new ApiError(404, "Invalid credentials");
@@ -118,7 +121,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
   const loggedInUser = await User.findById(user._id).select(
     "-password -refreshToken"
-  ); //here instead of db call to find updated user instance we can update user with accessToken and refresh token
+  ); //here instead of db call to find updated user instance, we can update user with accessToken and refresh token
 
   return res
     .status(200)
@@ -142,7 +145,8 @@ const logoutUser = asyncHandler(async (req, res) => {
     req.user._id,
     {
       $set: {
-        refreshToken: undefined,
+        // refreshToken: undefined,
+        refreshToken: 1, // this removes the fiels from document.
       },
     },
     {
@@ -193,7 +197,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         )
       );
   } catch (error) {
-    throw new ApiError(401, erroe);
+    throw new ApiError(401, error);
   }
 });
 
@@ -218,8 +222,8 @@ const getCurrentUser = asyncHandler(async (req, res) => {
   try {
     const user = req?.user;
     return res
-      .code(200)
-      .json(new ApiResponse(200, { user }, "user details fetch successfully"));
+      .status(200)
+      .json(new ApiResponse(200, user, "user details fetch successfully"));
   } catch (error) {
     throw new ApiError(500, "something went wrong while fetching user details");
   }
@@ -228,10 +232,10 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 const updateAccountDetails = asyncHandler(async (req, res) => {
   //for any kind of file uplod we should make separate controller, it is better approach.
   const { fullName, email } = req.body;
-  if (!fullName || !email) {
+  if (!(fullName || email)) {
     throw new ApiError(400, "all fileds are required");
   }
-  const updatedUser = User.findByIdAndUpdate(
+  const updatedUser = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
@@ -242,11 +246,13 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     {
       new: true, // it will return updated user
     }
-  ).select("-password");
+  ).select("-password -refreshToken");
 
   return res
     .status(200)
-    .json(200, updatedUser, "user detail updated successfully ");
+    .json(
+      new ApiResponse(200, updatedUser, "user detail updated successfully ")
+    );
 });
 
 const updateUserAvatar = asyncHandler(async (req, res) => {
@@ -363,13 +369,12 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
       },
     },
   ]);
-  console.log("channel: --->", channel);
   if (!channel?.length) {
     throw new ApiError(404, "channel does not exists");
   }
   return res
     .status(200)
-    .json(200, channel[0], "user channel fetched successsfully");
+    .json( new ApiResponse( 200, channel[0], "user channel fetched successsfully"));
 });
 
 const getWatchHistory = asyncHandler(async (req, res) => {
@@ -417,7 +422,13 @@ const getWatchHistory = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(200, user[0].watchHistory, "watchHistory fetched successfully");
+    .json(
+      new ApiResponse(
+        200,
+        user[0].watchHistory,
+        "watchHistory fetched successfully"
+      )
+    );
 });
 
 export {
