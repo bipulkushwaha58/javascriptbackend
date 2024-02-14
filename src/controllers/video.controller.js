@@ -10,6 +10,13 @@ import { upload } from "../middlewares/multer.middleware.js";
 const getAllVideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
   //TODO: get all videos based on query, sort, pagination
+ 
+  const videos = await Video.find({}).sort({[sortBy]: -1}).limit(limit)
+
+  return res
+         .status(200)
+         .json(new ApiResponse(200,videos,"video list fetched successfully"))
+
 });
 
 const publishAVideo = asyncHandler(async (req, res) => {
@@ -36,29 +43,112 @@ const publishAVideo = asyncHandler(async (req, res) => {
     duration: videoFile.duration,
     owner,
   });
-   //no need to find video in db, if there will any error while creating video document in db it should trow error, in case of error below code will not execute.
-return res
-  .status(201)
-.json(new ApiResponse(201,video, "video uploaded successfully"))
+  //no need to find video in db, if there will any error while creating video document in db it should trow error, in case of error below code will not execute.
+  return res
+    .status(201)
+    .json(new ApiResponse(201, video, "video uploaded successfully"));
 });
 
 const getVideoById = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   //TODO: get video by id
+ try {
+   let video = await Video.findById(videoId)
+   if(!video){
+    throw new ApiError(501, "video not found")
+   }
+   return res
+          .status(201)
+          .json(new ApiResponse(200,video, "video fetched successfully"))
+ } catch (error) {
+  throw error
+ }
+
 });
 
 const updateVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+  const {title,description,thumbnail} = req.body
   //TODO: update video details like title, description, thumbnail
+  if(!(title||description||thumbnail)){
+    throw new ApiError(400,"bad request, inorder to update document title or description or thumnail is required" )
+  }
+  try {
+
+    const updatedVideo = await Video.findByIdAndUpdate(
+      videoId,
+      {
+        $set:{
+          title,
+        }
+      },
+      {
+        new: true  // this will return updated document
+      }
+    )
+    return res
+           .status(200)
+           .json(new ApiResponse(200, updatedVideo ,"video updated successfully"))
+    
+  } catch (error) {
+    throw error
+  }
+
 });
 
 const deleteVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   //TODO: delete video
+
+  try {
+    const deletedVideo = await Video.findByIdAndDelete(
+      videoId,
+      {
+        new: true
+      }
+      )
+
+      if(deletedVideo==null){
+        throw new ApiError(403, "video not found")
+      }
+
+      return res
+            .status(200)
+            .json(new ApiResponse(200,{},"video deleted successfully!"))
+
+    
+  } catch (error) {
+     throw error
+  }
+
 });
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+  const { isPublished } = req.body
+  console.log("isPublished===>", req.body)
+  try {
+    const publishFlag = await Video.findByIdAndUpdate(
+      videoId,
+      {
+       $set:{
+        isPublished
+       } 
+      },
+      {
+        new: true
+      }
+    )
+
+    return res
+          .status(200)
+          .json( new ApiResponse(200,publishFlag,"video publish status updated successfully"))
+    
+  } catch (error) {
+    throw error
+    
+  }
+
 });
 
 export {
