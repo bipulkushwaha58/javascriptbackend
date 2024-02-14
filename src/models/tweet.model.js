@@ -2,7 +2,7 @@ import { Schema,model } from "mongoose";
 
 const tweetSchema = new Schema(
     {
-        owener:{
+        owner:{
             type: Schema.Types.ObjectId,
             ref:"User"
         },
